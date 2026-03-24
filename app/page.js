@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore'
 
-// FIREBASE
+// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDEGmc5x6265BFqF_g27zfK37DYuXaohyQ",
   authDomain: "lista-mercado-ef3f5.firebaseapp.com",
@@ -23,14 +23,14 @@ export default function App() {
       <div style={styles.container}>
         <h1 style={styles.title}>Lista Inteligente</h1>
 
-        <div style={{ ...styles.card, background: 'linear-gradient(135deg, #4facfe, #00f2fe)' }}
+        <div style={{ ...styles.card, background: styles.gradientBlue }}
           onClick={() => { setType('mercado'); setView('list') }}>
-          <h2>Supermercado</h2>
+          <h2>🛒 Supermercado</h2>
         </div>
 
-        <div style={{ ...styles.card, background: 'linear-gradient(135deg, #43e97b, #38f9d7)' }}
+        <div style={{ ...styles.card, background: styles.gradientGreen }}
           onClick={() => { setType('fruteira'); setView('list') }}>
-          <h2>Fruteira</h2>
+          <h2>🍎 Fruteira</h2>
         </div>
       </div>
     )
@@ -42,7 +42,7 @@ export default function App() {
 function Lista({ tipo, voltar }) {
   const [items, setItems] = useState([])
   const [input, setInput] = useState('')
-  const [total, setTotal] = useState(0)
+  const [totalMes, setTotalMes] = useState(0)
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, tipo), (snapshot) => {
@@ -68,7 +68,6 @@ function Lista({ tipo, voltar }) {
     })
   }
 
-  // 🔥 IA CUPOM
   const handleUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -83,10 +82,9 @@ function Lista({ tipo, voltar }) {
 
     const data = await res.json()
 
-    // 🧠 remover itens da lista
     const produtos = data.items.map(i => i.toLowerCase())
 
-    items.forEach(async (item) => {
+    for (const item of items) {
       const nome = item.name.toLowerCase()
 
       if (produtos.some(p => nome.includes(p))) {
@@ -94,17 +92,16 @@ function Lista({ tipo, voltar }) {
           checked: true
         })
       }
-    })
+    }
 
-    // 💰 soma total
-    setTotal(prev => prev + (data.total || 0))
+    setTotalMes(prev => prev + (data.total || 0))
   }
 
   return (
     <div style={styles.container}>
-      <button onClick={voltar}>⬅ Voltar</button>
+      <button onClick={voltar} style={styles.back}>⬅ Voltar</button>
 
-      <h2>{tipo}</h2>
+      <h2 style={styles.title}>{tipo}</h2>
 
       {/* INPUT */}
       <div style={styles.inputBox}>
@@ -114,30 +111,48 @@ function Lista({ tipo, voltar }) {
           placeholder="Adicionar item"
           style={styles.input}
         />
-        <button onClick={addItem}>+</button>
+        <button onClick={addItem} style={styles.addButton}>+</button>
       </div>
 
-      {/* LISTA */}
-      {items.map(item => (
-        <div key={item.id} onClick={() => toggleItem(item)} style={styles.item}>
-          <span style={{
-            textDecoration: item.checked ? 'line-through' : 'none'
-          }}>
-            {item.name}
-          </span>
-          <span>{item.checked ? '✔' : ''}</span>
-        </div>
-      ))}
+      {/* LISTA FLUIDA */}
+      <div style={styles.listContainer}>
+        {items.map(item => (
+          <div
+            key={item.id}
+            onClick={() => toggleItem(item)}
+            style={{
+              ...styles.itemCard,
+              background: item.checked ? styles.gradientDone : styles.gradientCard
+            }}
+          >
+            <p style={{
+              ...styles.itemText,
+              textDecoration: item.checked ? 'line-through' : 'none'
+            }}>
+              {item.name}
+            </p>
 
-      {/* 📸 UPLOAD CUPOM */}
-      <div style={styles.upload}>
-        <p>📸 Enviar cupom fiscal</p>
-        <input type="file" onChange={handleUpload} />
+            <div style={{
+              ...styles.check,
+              background: item.checked ? '#4caf50' : '#fff'
+            }}>
+              {item.checked ? '✓' : ''}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* 💰 TOTAL */}
-      <div style={styles.total}>
-        Total gasto: R$ {total}
+      {/* UPLOAD */}
+      <div style={styles.uploadBox}>
+        <label style={styles.uploadLabel}>
+          📸 Enviar cupom fiscal
+          <input type="file" onChange={handleUpload} style={{ display: 'none' }} />
+        </label>
+      </div>
+
+      {/* TOTAL MÊS */}
+      <div style={styles.totalBox}>
+        💰 Total do mês: R$ {totalMes.toFixed(2)}
       </div>
     </div>
   )
@@ -145,44 +160,108 @@ function Lista({ tipo, voltar }) {
 
 const styles = {
   container: {
-    padding: 20
+    minHeight: '100vh',
+    background: '#0f172a',
+    padding: 20,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 20
   },
+
   title: {
     fontSize: 28,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    color: '#fff'
   },
+
   card: {
     padding: 30,
-    borderRadius: 20,
+    borderRadius: 25,
     color: '#fff',
-    marginBottom: 20,
-    cursor: 'pointer'
+    cursor: 'pointer',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
   },
+
+  gradientBlue: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+  gradientGreen: 'linear-gradient(135deg, #22c55e, #4ade80)',
+  gradientCard: 'linear-gradient(135deg, #1e293b, #334155)',
+  gradientDone: 'linear-gradient(135deg, #16a34a, #4ade80)',
+
   inputBox: {
     display: 'flex',
-    gap: 10,
-    marginBottom: 20
+    gap: 10
   },
+
   input: {
     flex: 1,
-    padding: 10
+    padding: 12,
+    borderRadius: 12,
+    border: 'none'
   },
-  item: {
+
+  addButton: {
+    width: 45,
+    borderRadius: 12,
+    background: '#3b82f6',
+    color: '#fff',
+    border: 'none'
+  },
+
+  listContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12
+  },
+
+  itemCard: {
+    padding: 15,
+    borderRadius: 20,
     display: 'flex',
     justifyContent: 'space-between',
-    padding: 10,
-    background: '#eee',
-    marginBottom: 10,
-    borderRadius: 10
+    alignItems: 'center',
+    color: '#fff',
+    transition: 'all 0.2s'
   },
-  upload: {
-    marginTop: 20,
+
+  itemText: {
+    fontSize: 16
+  },
+
+  check: {
+    width: 30,
+    height: 30,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#000'
+  },
+
+  uploadBox: {
+    marginTop: 10
+  },
+
+  uploadLabel: {
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     padding: 15,
-    background: '#ddd',
-    borderRadius: 10
+    borderRadius: 20,
+    textAlign: 'center',
+    color: '#fff',
+    cursor: 'pointer'
   },
-  total: {
+
+  totalBox: {
     marginTop: 20,
-    fontWeight: 'bold'
+    padding: 20,
+    borderRadius: 20,
+    background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
+
+  back: {
+    color: '#fff'
   }
 }
