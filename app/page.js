@@ -20,23 +20,36 @@ export default function App() {
 
   if (view === 'home') {
     return (
-      <div className="p-6 min-h-screen bg-gray-100 flex flex-col gap-6">
+      <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 p-6 flex flex-col gap-6">
         <h1 className="text-3xl font-bold text-center">Lista Inteligente</h1>
 
-        <div className="grid gap-6">
+        {/* CARDS GRANDES */}
+        <div className="grid gap-6 mt-4">
+
+          {/* CARD MERCADO */}
           <div
             onClick={() => { setType('mercado'); setView('list') }}
-            className="bg-blue-500 text-white p-10 rounded-3xl shadow-lg cursor-pointer text-center text-xl font-semibold"
+            className="w-full h-40 bg-blue-500 text-white rounded-3xl shadow-xl flex items-center justify-between px-6 cursor-pointer active:scale-95 transition"
           >
-            🛒 Supermercado
+            <div>
+              <h2 className="text-2xl font-bold">Supermercado</h2>
+              <p className="text-sm opacity-80">Lista completa de compras</p>
+            </div>
+            <span className="text-5xl">🛒</span>
           </div>
 
+          {/* CARD FRUTEIRA */}
           <div
             onClick={() => { setType('fruteira'); setView('list') }}
-            className="bg-green-500 text-white p-10 rounded-3xl shadow-lg cursor-pointer text-center text-xl font-semibold"
+            className="w-full h-40 bg-green-500 text-white rounded-3xl shadow-xl flex items-center justify-between px-6 cursor-pointer active:scale-95 transition"
           >
-            🍎 Fruteira
+            <div>
+              <h2 className="text-2xl font-bold">Fruteira</h2>
+              <p className="text-sm opacity-80">Frutas e verduras</p>
+            </div>
+            <span className="text-5xl">🍎</span>
           </div>
+
         </div>
       </div>
     )
@@ -136,7 +149,7 @@ function Lista({ tipo, voltar }) {
   return (
     <div className="p-6 min-h-screen bg-gray-100 flex flex-col gap-6">
 
-      <button onClick={voltar}>⬅ Voltar</button>
+      <button onClick={voltar} className="text-sm">⬅ Voltar</button>
 
       <h2 className="text-2xl font-bold capitalize">{tipo}</h2>
 
