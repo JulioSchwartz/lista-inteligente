@@ -88,48 +88,93 @@ function Lista({ tipo, voltar }) {
     await deleteDoc(doc(db, tipo, item.id))
   }
 
+  // 🔥 NOVO - compressão + proteção
   const handleUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
+    const resized = await resizeImage(file)
+
     const formData = new FormData()
-    formData.append("file", file)
+    formData.append("file", resized)
 
-    const res = await fetch('/api/receipt', {
-      method: 'POST',
-      body: formData
-    })
+    try {
+      const res = await fetch('/api/receipt', {
+        method: 'POST',
+        body: formData
+      })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    const produtos = data.items.map(i => i.toLowerCase())
-
-    for (const item of items) {
-      const nome = item.name.toLowerCase()
-
-      if (produtos.some(p => nome.includes(p))) {
-        await updateDoc(doc(db, tipo, item.id), {
-          checked: true
-        })
+      if (!data.items) {
+        alert("Erro ao ler cupom")
+        return
       }
-    }
 
-    await addDoc(collection(db, "gastos"), {
-      valor: data.total,
-      tipo,
-      data: new Date().toISOString()
+      const produtos = data.items.map(i => i.toLowerCase())
+
+      for (const item of items) {
+        const nome = item.name.toLowerCase()
+
+        if (produtos.some(p => nome.includes(p))) {
+          await updateDoc(doc(db, tipo, item.id), {
+            checked: true
+          })
+        }
+      }
+
+      await addDoc(collection(db, "gastos"), {
+        valor: data.total || 0,
+        tipo,
+        data: new Date().toISOString()
+      })
+
+    } catch (err) {
+      console.error(err)
+      alert("Erro ao processar cupom")
+    }
+  }
+
+  // 🔥 NOVO - reduzir imagem
+  const resizeImage = (file) => {
+    return new Promise((resolve) => {
+      const img = document.createElement('img')
+      const reader = new FileReader()
+
+      reader.onload = (e) => {
+        img.src = e.target.result
+      }
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_WIDTH = 800
+
+        const scale = MAX_WIDTH / img.width
+
+        canvas.width = MAX_WIDTH
+        canvas.height = img.height * scale
+
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+        canvas.toBlob((blob) => {
+          resolve(blob)
+        }, 'image/jpeg', 0.7)
+      }
+
+      reader.readAsDataURL(file)
     })
   }
 
   return (
     <div style={styles.container}>
-      <button onClick={voltar}>⬅ Voltar</button>
+      <button onClick={voltar} style={styles.backBtn}>⬅ Voltar</button>
 
       <h2 style={styles.title}>{tipo}</h2>
 
       <div style={styles.inputBox}>
         <input value={input} onChange={(e) => setInput(e.target.value)} style={styles.input} />
-        <button onClick={addItem}>+</button>
+        <button onClick={addItem} style={styles.addBtn}>+</button>
       </div>
 
       <div style={styles.listContainer}>
@@ -141,7 +186,8 @@ function Lista({ tipo, voltar }) {
               onClick={() => toggleItem(item)}
               style={{
                 ...styles.itemCard,
-                background: item.checked ? styles.gradientDone : styles.gradientCard
+                background: item.checked ? styles.gradientDone : styles.gradientCard,
+                transform: item.checked ? 'scale(0.97)' : 'scale(1)'
               }}
             >
               <p style={{ textDecoration: item.checked ? 'line-through' : 'none' }}>{item.name}</p>
@@ -162,7 +208,6 @@ function Lista({ tipo, voltar }) {
         💰 Total do mês: R$ {totalMes.toFixed(2)}
       </div>
 
-      {/* GRÁFICO SIMPLES */}
       <div style={styles.chartBox}>
         <h3>📊 Histórico</h3>
         {historico.map((h, i) => (
@@ -177,16 +222,29 @@ function Lista({ tipo, voltar }) {
 
 const styles = {
   container: { padding: 20, background: '#0f172a', minHeight: '100vh', color: '#fff' },
-  title: { fontSize: 26, fontWeight: 'bold' },
-  card: { padding: 25, borderRadius: 20, cursor: 'pointer' },
+  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 20 },
+
+  card: {
+    padding: 30,
+    borderRadius: 25,
+    cursor: 'pointer',
+    marginBottom: 20,
+    boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+  },
+
   gradientBlue: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
   gradientGreen: 'linear-gradient(135deg, #22c55e, #4ade80)',
   gradientCard: 'linear-gradient(135deg, #1e293b, #334155)',
   gradientDone: 'linear-gradient(135deg, #16a34a, #4ade80)',
-  inputBox: { display: 'flex', gap: 10 },
-  input: { flex: 1, padding: 10, borderRadius: 10 },
-  listContainer: { marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 },
+
+  inputBox: { display: 'flex', gap: 10, marginBottom: 20 },
+  input: { flex: 1, padding: 12, borderRadius: 12 },
+  addBtn: { padding: '0 15px', borderRadius: 12, background: '#6366f1', color: '#fff' },
+
+  listContainer: { display: 'flex', flexDirection: 'column', gap: 12 },
+
   swipeContainer: { position: 'relative' },
+
   deleteBtn: {
     position: 'absolute',
     right: 0,
@@ -196,20 +254,58 @@ const styles = {
     color: '#fff',
     display: 'flex',
     alignItems: 'center',
-    padding: '0 15px',
-    borderRadius: 10
+    padding: '0 20px',
+    borderRadius: 15
   },
+
   itemCard: {
-    padding: 15,
-    borderRadius: 15,
+    padding: 18,
+    borderRadius: 20,
     display: 'flex',
     justifyContent: 'space-between',
-    position: 'relative'
+    alignItems: 'center'
   },
-  check: { width: 25, height: 25, borderRadius: '50%', background: '#fff', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  uploadBox: { marginTop: 20 },
-  uploadLabel: { padding: 15, background: '#6366f1', borderRadius: 15, textAlign: 'center', cursor: 'pointer' },
-  totalBox: { marginTop: 20, padding: 15, background: '#f59e0b', borderRadius: 15 },
+
+  check: {
+    width: 28,
+    height: 28,
+    borderRadius: '50%',
+    background: '#fff',
+    color: '#000',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+
+  uploadBox: { marginTop: 25 },
+
+  uploadLabel: {
+    padding: 18,
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    borderRadius: 20,
+    textAlign: 'center',
+    cursor: 'pointer'
+  },
+
+  totalBox: {
+    marginTop: 20,
+    padding: 15,
+    background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+    borderRadius: 15
+  },
+
   chartBox: { marginTop: 20 },
-  bar: { background: '#3b82f6', marginTop: 5, padding: 5, borderRadius: 5 }
+
+  bar: {
+    background: '#3b82f6',
+    marginTop: 5,
+    padding: 8,
+    borderRadius: 8
+  },
+
+  backBtn: {
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 10
+  }
 }
