@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { initializeApp } from 'firebase/app'
 import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore'
 
-// 🔥 CONFIG FIREBASE
+// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyDEGmc5x6265BFqF_g27zfK37DYuXaohyQ",
   authDomain: "lista-mercado-ef3f5.firebaseapp.com",
@@ -23,28 +23,14 @@ export default function App() {
       <div style={styles.container}>
         <h1 style={styles.title}>Lista Inteligente</h1>
 
-        <div
-          style={{ ...styles.card, background: 'linear-gradient(135deg, #4facfe, #00f2fe)' }}
-          onClick={() => { setType('mercado'); setView('list') }}
-        >
-          <div>
-            <h2 style={styles.cardTitle}>Supermercado</h2>
-            <p style={styles.cardText}>Lista completa</p>
-          </div>
-          <div style={styles.icon}>🛒</div>
-          <div style={styles.button}>→</div>
+        <div style={{ ...styles.card, background: 'linear-gradient(135deg, #4facfe, #00f2fe)' }}
+          onClick={() => { setType('mercado'); setView('list') }}>
+          <h2>Supermercado</h2>
         </div>
 
-        <div
-          style={{ ...styles.card, background: 'linear-gradient(135deg, #43e97b, #38f9d7)' }}
-          onClick={() => { setType('fruteira'); setView('list') }}
-        >
-          <div>
-            <h2 style={styles.cardTitle}>Fruteira</h2>
-            <p style={styles.cardText}>Frutas e verduras</p>
-          </div>
-          <div style={styles.icon}>🍎</div>
-          <div style={styles.button}>→</div>
+        <div style={{ ...styles.card, background: 'linear-gradient(135deg, #43e97b, #38f9d7)' }}
+          onClick={() => { setType('fruteira'); setView('list') }}>
+          <h2>Fruteira</h2>
         </div>
       </div>
     )
@@ -56,13 +42,12 @@ export default function App() {
 function Lista({ tipo, voltar }) {
   const [items, setItems] = useState([])
   const [input, setInput] = useState('')
+  const [total, setTotal] = useState(0)
 
-  // 🔄 SINCRONIZAÇÃO EM TEMPO REAL COM FIREBASE
   useEffect(() => {
     const unsub = onSnapshot(collection(db, tipo), (snapshot) => {
       setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
     })
-
     return () => unsub()
   }, [tipo])
 
@@ -83,10 +68,43 @@ function Lista({ tipo, voltar }) {
     })
   }
 
+  // 🔥 IA CUPOM
+  const handleUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const res = await fetch('/api/receipt', {
+      method: 'POST',
+      body: formData
+    })
+
+    const data = await res.json()
+
+    // 🧠 remover itens da lista
+    const produtos = data.items.map(i => i.toLowerCase())
+
+    items.forEach(async (item) => {
+      const nome = item.name.toLowerCase()
+
+      if (produtos.some(p => nome.includes(p))) {
+        await updateDoc(doc(db, tipo, item.id), {
+          checked: true
+        })
+      }
+    })
+
+    // 💰 soma total
+    setTotal(prev => prev + (data.total || 0))
+  }
+
   return (
     <div style={styles.container}>
-      <button onClick={voltar} style={styles.back}>⬅ Voltar</button>
-      <h2 style={styles.title}>{tipo}</h2>
+      <button onClick={voltar}>⬅ Voltar</button>
+
+      <h2>{tipo}</h2>
 
       {/* INPUT */}
       <div style={styles.inputBox}>
@@ -96,38 +114,30 @@ function Lista({ tipo, voltar }) {
           placeholder="Adicionar item"
           style={styles.input}
         />
-        <button onClick={addItem} style={styles.addButton}>+</button>
+        <button onClick={addItem}>+</button>
       </div>
 
-      {/* LISTA COM FIREBASE */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-        {items.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => toggleItem(item)}
-            style={{
-              ...styles.itemCard,
-              transform: item.checked ? 'scale(0.98)' : 'scale(1)',
-              opacity: item.checked ? 0.6 : 1
-            }}
-          >
-            <div>
-              <p style={{
-                ...styles.itemText,
-                textDecoration: item.checked ? 'line-through' : 'none'
-              }}>
-                {item.name}
-              </p>
-            </div>
+      {/* LISTA */}
+      {items.map(item => (
+        <div key={item.id} onClick={() => toggleItem(item)} style={styles.item}>
+          <span style={{
+            textDecoration: item.checked ? 'line-through' : 'none'
+          }}>
+            {item.name}
+          </span>
+          <span>{item.checked ? '✔' : ''}</span>
+        </div>
+      ))}
 
-            <div style={{
-              ...styles.check,
-              background: item.checked ? '#4caf50' : '#ddd'
-            }}>
-              {item.checked ? '✓' : ''}
-            </div>
-          </div>
-        ))}
+      {/* 📸 UPLOAD CUPOM */}
+      <div style={styles.upload}>
+        <p>📸 Enviar cupom fiscal</p>
+        <input type="file" onChange={handleUpload} />
+      </div>
+
+      {/* 💰 TOTAL */}
+      <div style={styles.total}>
+        Total gasto: R$ {total}
       </div>
     </div>
   )
@@ -135,110 +145,44 @@ function Lista({ tipo, voltar }) {
 
 const styles = {
   container: {
-    minHeight: '100vh',
-    background: '#f2f2f2',
-    padding: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20
+    padding: 20
   },
-
   title: {
     fontSize: 28,
     fontWeight: 'bold'
   },
-
   card: {
-    position: 'relative',
+    padding: 30,
     borderRadius: 20,
-    padding: 20,
     color: '#fff',
-    height: 140,
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 10px 20px rgba(0,0,0,0.15)'
+    marginBottom: 20,
+    cursor: 'pointer'
   },
-
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: 'bold'
-  },
-
-  cardText: {
-    fontSize: 14,
-    opacity: 0.9
-  },
-
-  icon: {
-    fontSize: 40
-  },
-
-  button: {
-    position: 'absolute',
-    right: 15,
-    bottom: 15,
-    width: 35,
-    height: 35,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 18
-  },
-
-  back: {
-    marginBottom: 10
-  },
-
   inputBox: {
     display: 'flex',
-    gap: 10
+    gap: 10,
+    marginBottom: 20
   },
-
   input: {
     flex: 1,
-    padding: 10,
-    borderRadius: 10,
-    border: '1px solid #ccc'
+    padding: 10
   },
-
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: '50%',
-    background: '#4facfe',
-    color: '#fff',
-    fontSize: 20,
-    border: 'none'
-  },
-
-  itemCard: {
-    background: '#fff',
-    padding: 15,
-    borderRadius: 20,
+  item: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    boxShadow: '0 8px 15px rgba(0,0,0,0.1)',
-    transition: 'all 0.2s ease'
+    padding: 10,
+    background: '#eee',
+    marginBottom: 10,
+    borderRadius: 10
   },
-
-  itemText: {
-    fontSize: 16,
-    fontWeight: '500'
+  upload: {
+    marginTop: 20,
+    padding: 15,
+    background: '#ddd',
+    borderRadius: 10
   },
-
-  check: {
-    width: 30,
-    height: 30,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
+  total: {
+    marginTop: 20,
     fontWeight: 'bold'
   }
 }
