@@ -17,11 +17,9 @@ export default function App() {
         >
           <div>
             <h2 style={styles.cardTitle}>Supermercado</h2>
-            <p style={styles.cardText}>Lista completa de compras</p>
+            <p style={styles.cardText}>Lista completa</p>
           </div>
-
           <div style={styles.icon}>🛒</div>
-
           <div style={styles.button}>→</div>
         </div>
 
@@ -33,9 +31,7 @@ export default function App() {
             <h2 style={styles.cardTitle}>Fruteira</h2>
             <p style={styles.cardText}>Frutas e verduras</p>
           </div>
-
           <div style={styles.icon}>🍎</div>
-
           <div style={styles.button}>→</div>
         </div>
       </div>
@@ -46,10 +42,68 @@ export default function App() {
 }
 
 function Lista({ tipo, voltar }) {
+  const [items, setItems] = useState([])
+  const [input, setInput] = useState('')
+
+  const addItem = () => {
+    if (!input) return
+    setItems([...items, { name: input, checked: false }])
+    setInput('')
+  }
+
+  const toggleItem = (index) => {
+    const updated = [...items]
+    updated[index].checked = !updated[index].checked
+    setItems(updated)
+  }
+
   return (
     <div style={styles.container}>
       <button onClick={voltar} style={styles.back}>⬅ Voltar</button>
       <h2 style={styles.title}>{tipo}</h2>
+
+      {/* INPUT */}
+      <div style={styles.inputBox}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Adicionar item"
+          style={styles.input}
+        />
+        <button onClick={addItem} style={styles.addButton}>+</button>
+      </div>
+
+      {/* LISTA ESTILO APP */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+        {items.map((item, i) => (
+          <div
+            key={i}
+            onClick={() => toggleItem(i)}
+            style={{
+              ...styles.itemCard,
+              transform: item.checked ? 'scale(0.98)' : 'scale(1)',
+              opacity: item.checked ? 0.6 : 1
+            }}
+          >
+            <div>
+              <p style={{
+                ...styles.itemText,
+                textDecoration: item.checked ? 'line-through' : 'none'
+              }}>
+                {item.name}
+              </p>
+            </div>
+
+            {/* CHECK MODERNO */}
+            <div style={{
+              ...styles.check,
+              background: item.checked ? '#4caf50' : '#ddd'
+            }}>
+              {item.checked ? '✓' : ''}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -112,5 +166,54 @@ const styles = {
 
   back: {
     marginBottom: 10
+  },
+
+  inputBox: {
+    display: 'flex',
+    gap: 10
+  },
+
+  input: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 10,
+    border: '1px solid #ccc'
+  },
+
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    background: '#4facfe',
+    color: '#fff',
+    fontSize: 20,
+    border: 'none'
+  },
+
+  itemCard: {
+    background: '#fff',
+    padding: 15,
+    borderRadius: 20,
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    boxShadow: '0 8px 15px rgba(0,0,0,0.1)',
+    transition: 'all 0.2s ease'
+  },
+
+  itemText: {
+    fontSize: 16,
+    fontWeight: '500'
+  },
+
+  check: {
+    width: 30,
+    height: 30,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    fontWeight: 'bold'
   }
 }
