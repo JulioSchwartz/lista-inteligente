@@ -1,16 +1,25 @@
 import OpenAI from "openai"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
 export async function POST(req) {
   try {
+    console.log("🔥 API CHAMADA")
+
     const formData = await req.formData()
     const file = formData.get("file")
 
+    if (!file) {
+      console.log("❌ Sem arquivo")
+      return Response.json({ error: "Sem arquivo" })
+    }
+
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString("base64")
+
+    console.log("📸 Imagem convertida")
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
 
     const response = await openai.responses.create({
       model: "gpt-4.1-mini",
@@ -20,7 +29,7 @@ export async function POST(req) {
           content: [
             {
               type: "input_text",
-              text: "Extraia os produtos e o valor total desse cupom. Retorne JSON no formato: { items: [\"arroz\", \"banana\"], total: 100 }"
+              text: "Leia o cupom fiscal e retorne SOMENTE JSON válido no formato: { \"items\": [], \"total\": 0 }"
             },
             {
               type: "input_image",
@@ -31,14 +40,18 @@ export async function POST(req) {
       ]
     })
 
+    console.log("🤖 Resposta IA:", response)
+
     const text = response.output_text
+
+    console.log("📄 Texto:", text)
 
     const data = JSON.parse(text)
 
     return Response.json(data)
 
   } catch (error) {
-    console.error(error)
-    return Response.json({ error: "Erro ao processar IA" })
+    console.error("🔥 ERRO REAL:", error)
+    return Response.json({ error: error.message })
   }
 }
