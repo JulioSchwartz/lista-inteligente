@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { initializeApp } from 'firebase/app'
-import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore'
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, deleteDoc } from 'firebase/firestore'
 
-// 🔥 FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyDEGmc5x6265BFqF_g27zfK37DYuXaohyQ",
   authDomain: "lista-mercado-ef3f5.firebaseapp.com",
@@ -23,13 +22,11 @@ export default function App() {
       <div style={styles.container}>
         <h1 style={styles.title}>Lista Inteligente</h1>
 
-        <div style={{ ...styles.card, background: styles.gradientBlue }}
-          onClick={() => { setType('mercado'); setView('list') }}>
+        <div style={{ ...styles.card, background: styles.gradientBlue }} onClick={() => { setType('mercado'); setView('list') }}>
           <h2>🛒 Supermercado</h2>
         </div>
 
-        <div style={{ ...styles.card, background: styles.gradientGreen }}
-          onClick={() => { setType('fruteira'); setView('list') }}>
+        <div style={{ ...styles.card, background: styles.gradientGreen }} onClick={() => { setType('fruteira'); setView('list') }}>
           <h2>🍎 Fruteira</h2>
         </div>
       </div>
@@ -43,6 +40,7 @@ function Lista({ tipo, voltar }) {
   const [items, setItems] = useState([])
   const [input, setInput] = useState('')
   const [totalMes, setTotalMes] = useState(0)
+  const [historico, setHistorico] = useState([])
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, tipo), (snapshot) => {
@@ -50,6 +48,24 @@ function Lista({ tipo, voltar }) {
     })
     return () => unsub()
   }, [tipo])
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "gastos"), (snapshot) => {
+      let total = 0
+      let lista = []
+
+      snapshot.docs.forEach(doc => {
+        const d = doc.data()
+        total += d.valor || 0
+        lista.push(d)
+      })
+
+      setTotalMes(total)
+      setHistorico(lista)
+    })
+
+    return () => unsub()
+  }, [])
 
   const addItem = async () => {
     if (!input) return
@@ -66,6 +82,10 @@ function Lista({ tipo, voltar }) {
     await updateDoc(doc(db, tipo, item.id), {
       checked: !item.checked
     })
+  }
+
+  const deleteItem = async (item) => {
+    await deleteDoc(doc(db, tipo, item.id))
   }
 
   const handleUpload = async (e) => {
@@ -94,55 +114,43 @@ function Lista({ tipo, voltar }) {
       }
     }
 
-    setTotalMes(prev => prev + (data.total || 0))
+    await addDoc(collection(db, "gastos"), {
+      valor: data.total,
+      tipo,
+      data: new Date().toISOString()
+    })
   }
 
   return (
     <div style={styles.container}>
-      <button onClick={voltar} style={styles.back}>⬅ Voltar</button>
+      <button onClick={voltar}>⬅ Voltar</button>
 
       <h2 style={styles.title}>{tipo}</h2>
 
-      {/* INPUT */}
       <div style={styles.inputBox}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Adicionar item"
-          style={styles.input}
-        />
-        <button onClick={addItem} style={styles.addButton}>+</button>
+        <input value={input} onChange={(e) => setInput(e.target.value)} style={styles.input} />
+        <button onClick={addItem}>+</button>
       </div>
 
-      {/* LISTA FLUIDA */}
       <div style={styles.listContainer}>
         {items.map(item => (
-          <div
-            key={item.id}
-            onClick={() => toggleItem(item)}
-            style={{
-              ...styles.itemCard,
-              background: item.checked ? styles.gradientDone : styles.gradientCard
-            }}
-          >
-            <p style={{
-              ...styles.itemText,
-              textDecoration: item.checked ? 'line-through' : 'none'
-            }}>
-              {item.name}
-            </p>
+          <div key={item.id} style={styles.swipeContainer}>
+            <div style={styles.deleteBtn} onClick={() => deleteItem(item)}>Excluir</div>
 
-            <div style={{
-              ...styles.check,
-              background: item.checked ? '#4caf50' : '#fff'
-            }}>
-              {item.checked ? '✓' : ''}
+            <div
+              onClick={() => toggleItem(item)}
+              style={{
+                ...styles.itemCard,
+                background: item.checked ? styles.gradientDone : styles.gradientCard
+              }}
+            >
+              <p style={{ textDecoration: item.checked ? 'line-through' : 'none' }}>{item.name}</p>
+              <div style={styles.check}>{item.checked ? '✓' : ''}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* UPLOAD */}
       <div style={styles.uploadBox}>
         <label style={styles.uploadLabel}>
           📸 Enviar cupom fiscal
@@ -150,118 +158,58 @@ function Lista({ tipo, voltar }) {
         </label>
       </div>
 
-      {/* TOTAL MÊS */}
       <div style={styles.totalBox}>
         💰 Total do mês: R$ {totalMes.toFixed(2)}
+      </div>
+
+      {/* GRÁFICO SIMPLES */}
+      <div style={styles.chartBox}>
+        <h3>📊 Histórico</h3>
+        {historico.map((h, i) => (
+          <div key={i} style={styles.bar}>
+            R$ {h.valor}
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
 const styles = {
-  container: {
-    minHeight: '100vh',
-    background: '#0f172a',
-    padding: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 20
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff'
-  },
-
-  card: {
-    padding: 30,
-    borderRadius: 25,
-    color: '#fff',
-    cursor: 'pointer',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-  },
-
+  container: { padding: 20, background: '#0f172a', minHeight: '100vh', color: '#fff' },
+  title: { fontSize: 26, fontWeight: 'bold' },
+  card: { padding: 25, borderRadius: 20, cursor: 'pointer' },
   gradientBlue: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
   gradientGreen: 'linear-gradient(135deg, #22c55e, #4ade80)',
   gradientCard: 'linear-gradient(135deg, #1e293b, #334155)',
   gradientDone: 'linear-gradient(135deg, #16a34a, #4ade80)',
-
-  inputBox: {
-    display: 'flex',
-    gap: 10
-  },
-
-  input: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 12,
-    border: 'none'
-  },
-
-  addButton: {
-    width: 45,
-    borderRadius: 12,
-    background: '#3b82f6',
+  inputBox: { display: 'flex', gap: 10 },
+  input: { flex: 1, padding: 10, borderRadius: 10 },
+  listContainer: { marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 },
+  swipeContainer: { position: 'relative' },
+  deleteBtn: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    background: '#ef4444',
     color: '#fff',
-    border: 'none'
-  },
-
-  listContainer: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 12
+    alignItems: 'center',
+    padding: '0 15px',
+    borderRadius: 10
   },
-
   itemCard: {
     padding: 15,
-    borderRadius: 20,
+    borderRadius: 15,
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    color: '#fff',
-    transition: 'all 0.2s'
+    position: 'relative'
   },
-
-  itemText: {
-    fontSize: 16
-  },
-
-  check: {
-    width: 30,
-    height: 30,
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#000'
-  },
-
-  uploadBox: {
-    marginTop: 10
-  },
-
-  uploadLabel: {
-    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-    padding: 15,
-    borderRadius: 20,
-    textAlign: 'center',
-    color: '#fff',
-    cursor: 'pointer'
-  },
-
-  totalBox: {
-    marginTop: 20,
-    padding: 20,
-    borderRadius: 20,
-    background: 'linear-gradient(135deg, #f59e0b, #f97316)',
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center'
-  },
-
-  back: {
-    color: '#fff'
-  }
+  check: { width: 25, height: 25, borderRadius: '50%', background: '#fff', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  uploadBox: { marginTop: 20 },
+  uploadLabel: { padding: 15, background: '#6366f1', borderRadius: 15, textAlign: 'center', cursor: 'pointer' },
+  totalBox: { marginTop: 20, padding: 15, background: '#f59e0b', borderRadius: 15 },
+  chartBox: { marginTop: 20 },
+  bar: { background: '#3b82f6', marginTop: 5, padding: 5, borderRadius: 5 }
 }
