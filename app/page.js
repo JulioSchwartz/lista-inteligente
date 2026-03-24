@@ -90,8 +90,12 @@ function Lista({ tipo, voltar }) {
 
   // 🔥 NOVO - compressão + proteção
   const handleUpload = async (e) => {
+    console.log("🔥 UPLOAD CLICADO")
+    
     const file = e.target.files[0]
     if (!file) return
+
+    console.log("🔥 ENVIANDO PRA API")
 
     const resized = await resizeImage(file)
 
