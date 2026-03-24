@@ -1,6 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { initializeApp } from 'firebase/app'
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc } from 'firebase/firestore'
+
+// 🔥 CONFIG FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyDEGmc5x6265BFqF_g27zfK37DYuXaohyQ",
+  authDomain: "lista-mercado-ef3f5.firebaseapp.com",
+  projectId: "lista-mercado-ef3f5",
+}
+
+const app = initializeApp(firebaseConfig)
+const db = getFirestore(app)
 
 export default function App() {
   const [view, setView] = useState('home')
@@ -45,16 +57,30 @@ function Lista({ tipo, voltar }) {
   const [items, setItems] = useState([])
   const [input, setInput] = useState('')
 
-  const addItem = () => {
+  // 🔄 SINCRONIZAÇÃO EM TEMPO REAL COM FIREBASE
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, tipo), (snapshot) => {
+      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    })
+
+    return () => unsub()
+  }, [tipo])
+
+  const addItem = async () => {
     if (!input) return
-    setItems([...items, { name: input, checked: false }])
+
+    await addDoc(collection(db, tipo), {
+      name: input,
+      checked: false
+    })
+
     setInput('')
   }
 
-  const toggleItem = (index) => {
-    const updated = [...items]
-    updated[index].checked = !updated[index].checked
-    setItems(updated)
+  const toggleItem = async (item) => {
+    await updateDoc(doc(db, tipo, item.id), {
+      checked: !item.checked
+    })
   }
 
   return (
@@ -73,12 +99,12 @@ function Lista({ tipo, voltar }) {
         <button onClick={addItem} style={styles.addButton}>+</button>
       </div>
 
-      {/* LISTA ESTILO APP */}
+      {/* LISTA COM FIREBASE */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-        {items.map((item, i) => (
+        {items.map((item) => (
           <div
-            key={i}
-            onClick={() => toggleItem(i)}
+            key={item.id}
+            onClick={() => toggleItem(item)}
             style={{
               ...styles.itemCard,
               transform: item.checked ? 'scale(0.98)' : 'scale(1)',
@@ -94,7 +120,6 @@ function Lista({ tipo, voltar }) {
               </p>
             </div>
 
-            {/* CHECK MODERNO */}
             <div style={{
               ...styles.check,
               background: item.checked ? '#4caf50' : '#ddd'
