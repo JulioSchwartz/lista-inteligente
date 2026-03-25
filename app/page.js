@@ -104,11 +104,13 @@ function Lista({ tipo, voltar }) {
 
     try {
       const res = await fetch('/api/receipt', {
-        method: 'POST',
-        body: formData
-      })
+  method: 'POST',
+  body: formData
+})
 
-      const data = await res.json()
+const data = await res.json()
+
+console.log("RESPOSTA DA API 👉", data)
 
       if (!data.items) {
         alert("Erro ao ler cupom")
