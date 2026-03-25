@@ -40,8 +40,7 @@ Formato:
 {"items": ["arroz", "feijao"], "total": 39.90}
 
 Retorne apenas JSON.
-`
-`
+`.trim()
               },
               {
                 type: "input_image",
