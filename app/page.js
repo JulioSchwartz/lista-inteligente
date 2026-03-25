@@ -121,7 +121,13 @@ console.log("RESPOSTA DA API 👉", data)
         return
       }
 
-      const produtos = data.items.map(i => i.toLowerCase())
+     const normalize = (txt) =>
+  txt
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acento
+
+const produtos = data.items.map(normalize)
 
       for (const item of items) {
         const nome = item.name.toLowerCase()
