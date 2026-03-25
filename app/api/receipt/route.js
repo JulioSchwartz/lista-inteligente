@@ -26,15 +26,24 @@ export async function POST(request) {
               {
                 type: "input_text",
                 text: `
-Leia este cupom fiscal e retorne SOMENTE um JSON válido.
+Você é um leitor de cupom fiscal brasileiro.
 
-Formato obrigatório:
+Extraia TODOS os produtos e o valor total.
+
+REGRAS:
+- Ignore CNPJ, endereço, caixa, etc
+- Pegue apenas produtos comprados
+- Normalize nomes (ex: "ARROZ TIPO 1" → "arroz")
+- Retorne nomes simples
+
+FORMATO OBRIGATÓRIO:
 {
-  "items": ["nome do produto", "nome do produto"],
+  "items": ["arroz", "feijao", "banana"],
   "total": 123.45
 }
 
-Sem texto antes ou depois.
+Se não conseguir ler perfeitamente, tente ao máximo aproximar.
+Retorne SOMENTE JSON.
 `
               },
               {
