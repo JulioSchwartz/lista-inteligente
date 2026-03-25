@@ -1,21 +1,25 @@
 export async function POST(request) {
   try {
     const formData = await request.formData()
-    const file = formData.get('file')
+    const file = formData.get("file")
 
     if (!file) {
       return Response.json({ items: [], total: 0 })
     }
 
+    // 🔥 converter imagem
     const bytes = await file.arrayBuffer()
-    const base64 = Buffer.from(bytes).toString('base64')
+    const base64 = Buffer.from(bytes).toString("base64")
+
+    // 🔥 formato correto para OpenAI
     const image = `data:image/jpeg;base64,${base64}`
 
+    // 🔥 chamada da IA
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
@@ -26,65 +30,81 @@ export async function POST(request) {
               {
                 type: "input_text",
                 text: `
-text: `
 Você é um sistema profissional de leitura de cupom fiscal brasileiro.
 
-Identifique todos os produtos comprados e o valor total.
+Sua tarefa:
+- Identificar todos os produtos comprados
+- Identificar o valor total do cupom
 
-Regras:
-- Ignore CNPJ e endereço
-- Pegue apenas produtos com preço
-- Normalize nomes
+REGRAS:
+- Ignore CNPJ, endereço, caixa, operador
+- Considere apenas linhas com preço
+- Produtos sempre possuem valor monetário ao lado
+- Normalize nomes (ex: "ARROZ TIPO 1" → "arroz")
 
-Formato:
-{"items": ["arroz", "feijao"], "total": 39.90}
+EXEMPLOS:
+ARROZ 5KG        25,90 → arroz
+FEIJAO PRETO     8,50 → feijao
+BANANA PRATA     4,99 → banana
 
-Retorne apenas JSON.
-`.trim()
+TOTAL:
+- Procure linha com TOTAL
+- Se não encontrar, some os valores
+
+RETORNE SOMENTE JSON:
+{"items": ["arroz", "feijao", "banana"], "total": 39.39}
+                `.trim(),
               },
               {
                 type: "input_image",
-                image: image
-              }
-            ]
-          }
-        ]
-      })
+                image: image,
+              },
+            ],
+          },
+        ],
+      }),
     })
 
     const data = await response.json()
 
     console.log("OPENAI RAW 👉", JSON.stringify(data))
 
-    let text = data.output?.[0]?.content?.[0]?.text
+    let text = data?.output?.[0]?.content?.[0]?.text || ""
 
-    // 🔥 FALLBACK INTELIGENTE
+    // 🔥 fallback se não veio nada
     if (!text) {
       return Response.json({
-        items: ["item não identificado"],
-        total: 0
+        items: ["nao identificado"],
+        total: 0,
       })
     }
 
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim()
+    // 🔥 limpa possíveis blocos markdown
+    text = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim()
 
     let parsed
 
     try {
       parsed = JSON.parse(text)
-
-// 🔥 garante número válido
-if (!parsed.total || isNaN(parsed.total)) {
-  parsed.total = 0
-}
-    } catch (e) {
+    } catch (err) {
       console.log("ERRO PARSE 👉", text)
 
-      // 🔥 fallback se IA não responder corretamente
       parsed = {
         items: ["erro leitura"],
-        total: 0
+        total: 0,
       }
+    }
+
+    // 🔥 garante estrutura válida
+    if (!Array.isArray(parsed.items)) {
+      parsed.items = []
+    }
+
+    if (!parsed.total || isNaN(parsed.total)) {
+      parsed.total = 0
     }
 
     return Response.json(parsed)
@@ -94,7 +114,7 @@ if (!parsed.total || isNaN(parsed.total)) {
 
     return Response.json({
       items: ["erro geral"],
-      total: 0
+      total: 0,
     })
   }
 }
