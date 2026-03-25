@@ -26,24 +26,42 @@ export async function POST(request) {
               {
                 type: "input_text",
                 text: `
-Você é um leitor de cupom fiscal brasileiro.
+text: `
+Você é um sistema profissional de leitura de cupom fiscal brasileiro.
 
-Extraia TODOS os produtos e o valor total.
+Sua tarefa:
+1. Identificar TODOS os produtos comprados
+2. Identificar o valor total do cupom
 
-REGRAS:
-- Ignore CNPJ, endereço, caixa, etc
-- Pegue apenas produtos comprados
-- Normalize nomes (ex: "ARROZ TIPO 1" → "arroz")
-- Retorne nomes simples
+REGRAS IMPORTANTES:
 
-FORMATO OBRIGATÓRIO:
+- Ignore CNPJ, endereço, operador, caixa
+- Ignore linhas como "TOTAL", "SUBTOTAL", "TROCO"
+- Produtos sempre têm preço ao lado
+- Pegue apenas itens com valor monetário
+
+EXEMPLOS:
+ARROZ 5KG        25,90 → arroz
+FEIJAO PRETO     8,50 → feijao
+BANANA PRATA     4,99 → banana
+
+NORMALIZAÇÃO:
+- tudo minúsculo
+- remover marca
+- deixar nome simples
+
+TOTAL:
+- procure a linha com TOTAL
+- se não achar, some os valores
+
+RETORNE EXATAMENTE:
 {
   "items": ["arroz", "feijao", "banana"],
-  "total": 123.45
+  "total": 39.39
 }
 
-Se não conseguir ler perfeitamente, tente ao máximo aproximar.
-Retorne SOMENTE JSON.
+NÃO escreva texto fora do JSON.
+`
 `
               },
               {
