@@ -10,6 +10,9 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
 
+    // 🔥 IMPORTANTE: prefixo correto
+    const image = `data:image/jpeg;base64,${base64}`
+
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -24,11 +27,11 @@ export async function POST(request) {
             content: [
               {
                 type: "input_text",
-                text: "Leia este cupom e retorne JSON com items e total"
+                text: "Leia este cupom fiscal e retorne APENAS JSON no formato: {\"items\": [\"produto1\"], \"total\": 123.45}"
               },
               {
                 type: "input_image",
-                image_base64: base64
+                image: image
               }
             ]
           }
