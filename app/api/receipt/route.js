@@ -7,14 +7,10 @@ export async function POST(request) {
       return Response.json({ items: [], total: 0 })
     }
 
-    // 🔥 converter imagem
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString("base64")
-
-    // 🔥 formato correto para OpenAI
     const image = `data:image/jpeg;base64,${base64}`
 
-    // 🔥 chamada da IA
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -32,41 +28,26 @@ export async function POST(request) {
                 text: `
 Você é um sistema especialista em leitura de cupom fiscal brasileiro.
 
-TAREFAS:
-1. Extraia TODOS os produtos comprados
-2. Extraia o VALOR TOTAL FINAL
+Extraia:
+1. Lista de produtos
+2. Valor total FINAL do cupom
 
-REGRAS IMPORTANTES:
-
+REGRAS:
+- Ignore CNPJ, endereço, códigos
+- Pegue apenas itens com preço
+- Simplifique nomes (ex: "FILE DE TILAPIA" → "tilapia")
 - O total geralmente aparece como:
   "VALOR TOTAL"
   "TOTAL"
   "VALOR A PAGAR"
 
-- Neste cupom, o total está no FINAL
-
-- Ignore:
-  CNPJ, endereço, código, impostos
-
-- Produtos:
-  Pegue apenas nomes com valor (linhas com preço)
-
-- Simplifique nomes:
-  "FILEZINHO SASSAMI" → "frango"
-  "FILE DE TILAPIA" → "tilapia"
-  "PAPEL MANTEIGA" → "papel manteiga"
-
-FORMATO OBRIGATÓRIO:
-{
-  "items": ["frango", "tilapia", "carne", "arroz"],
-  "total": 519.77
-}
+FORMATO:
+{"items": ["frango", "tilapia", "carne"], "total": 519.77}
 
 IMPORTANTE:
-- Converta vírgula para ponto (519,77 → 519.77)
-- Retorne SOMENTE JSON
-`
-
+- Converter vírgula para ponto (519,77 → 519.77)
+- Retornar SOMENTE JSON
+                `.trim(),
               },
               {
                 type: "input_image",
@@ -84,15 +65,10 @@ IMPORTANTE:
 
     let text = data?.output?.[0]?.content?.[0]?.text || ""
 
-    // 🔥 fallback se não veio nada
     if (!text) {
-      return Response.json({
-        items: ["nao identificado"],
-        total: 0,
-      })
+      return Response.json({ items: [], total: 0 })
     }
 
-    // 🔥 limpa possíveis blocos markdown
     text = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -104,20 +80,27 @@ IMPORTANTE:
       parsed = JSON.parse(text)
     } catch (err) {
       console.log("ERRO PARSE 👉", text)
-
-      parsed = {
-        items: ["erro leitura"],
-        total: 0,
-      }
+      parsed = { items: [], total: 0 }
     }
 
-    // 🔥 garante estrutura válida
+    // 🔥 GARANTE ARRAY
     if (!Array.isArray(parsed.items)) {
       parsed.items = []
     }
 
-    if (!parsed.total || isNaN(parsed.total)) {
-      parsed.total = 0
+    // 🔥 GARANTE TOTAL
+    if (!parsed.total || isNaN(parsed.total) || parsed.total === 0) {
+      // tenta extrair manualmente do texto
+      const match = text.match(/(\d{1,3}\.\d{3},\d{2}|\d+,\d{2})/g)
+
+      if (match && match.length > 0) {
+        const lastValue = match[match.length - 1]
+        parsed.total = Number(
+          lastValue.replace(/\./g, "").replace(",", ".")
+        )
+      } else {
+        parsed.total = 0
+      }
     }
 
     return Response.json(parsed)
@@ -126,7 +109,7 @@ IMPORTANTE:
     console.error("ERRO GERAL 👉", error)
 
     return Response.json({
-      items: ["erro geral"],
+      items: [],
       total: 0,
     })
   }
