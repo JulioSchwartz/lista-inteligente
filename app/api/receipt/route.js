@@ -94,6 +94,11 @@ NÃO escreva texto fora do JSON.
 
     try {
       parsed = JSON.parse(text)
+
+// 🔥 garante número válido
+if (!parsed.total || isNaN(parsed.total)) {
+  parsed.total = 0
+}
     } catch (e) {
       console.log("ERRO PARSE 👉", text)
 
