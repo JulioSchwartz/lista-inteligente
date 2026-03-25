@@ -50,22 +50,26 @@ function Lista({ tipo, voltar }) {
   }, [tipo])
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "gastos"), (snapshot) => {
-      let total = 0
-      let lista = []
+  const unsub = onSnapshot(collection(db, "gastos"), (snapshot) => {
+    let total = 0
+    let lista = []
 
-      snapshot.docs.forEach(doc => {
-        const d = doc.data()
-        total += d.valor || 0
+    snapshot.docs.forEach(doc => {
+      const d = doc.data()
+
+      // 🔥 FILTRA POR TIPO (AQUI ESTÁ A CORREÇÃO)
+      if (d.tipo === tipo) {
+        total += Number(d.valor) || 0
         lista.push(d)
-      })
-
-      setTotalMes(total)
-      setHistorico(lista)
+      }
     })
 
-    return () => unsub()
-  }, [])
+    setTotalMes(total)
+    setHistorico(lista)
+  })
+
+  return () => unsub()
+}, [tipo])
 
   const addItem = async () => {
     if (!input) return
