@@ -4,7 +4,7 @@ export async function POST(request) {
     const file = formData.get('file')
 
     if (!file) {
-      return new Response(JSON.stringify({ error: 'Sem arquivo' }), { status: 400 })
+      return Response.json({ items: [], total: 0 })
     }
 
     const bytes = await file.arrayBuffer()
@@ -24,7 +24,7 @@ export async function POST(request) {
             content: [
               {
                 type: "input_text",
-                text: "Leia o cupom fiscal e retorne JSON: { items: [], total: number }"
+                text: "Leia este cupom fiscal e responda APENAS JSON no formato: {\"items\": [\"produto1\", \"produto2\"], \"total\": 123.45}"
               },
               {
                 type: "input_image",
@@ -38,13 +38,23 @@ export async function POST(request) {
 
     const data = await response.json()
 
-    const text = data.output?.[0]?.content?.[0]?.text || '{}'
-    const parsed = JSON.parse(text)
+    let text = data.output?.[0]?.content?.[0]?.text || '{}'
 
-    return new Response(JSON.stringify(parsed), { status: 200 })
+    // 🔥 LIMPA resposta (muito importante)
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim()
+
+    let parsed
+
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      parsed = { items: [], total: 0 }
+    }
+
+    return Response.json(parsed)
 
   } catch (error) {
     console.error(error)
-    return new Response(JSON.stringify({ error: 'Erro interno' }), { status: 500 })
+    return Response.json({ items: [], total: 0 })
   }
 }
