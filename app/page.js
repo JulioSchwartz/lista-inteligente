@@ -132,7 +132,12 @@ const produtos = data.items.map(normalize)
       for (const item of items) {
         const nome = item.name.toLowerCase()
 
-        if (produtos.some(p => nome.includes(p) || p.includes(nome))) {
+        const nomeNormalizado = normalize(item.name)
+
+if (produtos.some(p =>
+  nomeNormalizado.includes(p) ||
+  p.includes(nomeNormalizado)
+)) {
           await updateDoc(doc(db, tipo, item.id), {
             checked: true
           })
