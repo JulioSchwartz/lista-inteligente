@@ -9,8 +9,6 @@ export async function POST(request) {
 
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
-
-    // 🔥 IMPORTANTE: prefixo correto
     const image = `data:image/jpeg;base64,${base64}`
 
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -27,7 +25,17 @@ export async function POST(request) {
             content: [
               {
                 type: "input_text",
-                text: "Leia este cupom fiscal e retorne APENAS JSON no formato: {\"items\": [\"produto1\"], \"total\": 123.45}"
+                text: `
+Leia este cupom fiscal e retorne SOMENTE um JSON válido.
+
+Formato obrigatório:
+{
+  "items": ["nome do produto", "nome do produto"],
+  "total": 123.45
+}
+
+Sem texto antes ou depois.
+`
               },
               {
                 type: "input_image",
@@ -41,9 +49,17 @@ export async function POST(request) {
 
     const data = await response.json()
 
-    console.log("OPENAI RESPONSE 👉", JSON.stringify(data))
+    console.log("OPENAI RAW 👉", JSON.stringify(data))
 
-    let text = data.output?.[0]?.content?.[0]?.text || '{}'
+    let text = data.output?.[0]?.content?.[0]?.text
+
+    // 🔥 FALLBACK INTELIGENTE
+    if (!text) {
+      return Response.json({
+        items: ["item não identificado"],
+        total: 0
+      })
+    }
 
     text = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
@@ -51,14 +67,24 @@ export async function POST(request) {
 
     try {
       parsed = JSON.parse(text)
-    } catch {
-      parsed = { items: [], total: 0 }
+    } catch (e) {
+      console.log("ERRO PARSE 👉", text)
+
+      // 🔥 fallback se IA não responder corretamente
+      parsed = {
+        items: ["erro leitura"],
+        total: 0
+      }
     }
 
     return Response.json(parsed)
 
   } catch (error) {
-    console.error("ERRO NA API 👉", error)
-    return Response.json({ items: [], total: 0 })
+    console.error("ERRO GERAL 👉", error)
+
+    return Response.json({
+      items: ["erro geral"],
+      total: 0
+    })
   }
 }
