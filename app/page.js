@@ -122,7 +122,7 @@ console.log("RESPOSTA DA API 👉", data)
       for (const item of items) {
         const nome = item.name.toLowerCase()
 
-        if (produtos.some(p => nome.includes(p))) {
+        if (produtos.some(p => nome.includes(p) || p.includes(nome))) {
           await updateDoc(doc(db, tipo, item.id), {
             checked: true
           })
