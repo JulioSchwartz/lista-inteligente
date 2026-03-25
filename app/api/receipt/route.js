@@ -24,7 +24,7 @@ export async function POST(request) {
             content: [
               {
                 type: "input_text",
-                text: "Leia este cupom fiscal e responda APENAS JSON no formato: {\"items\": [\"produto1\", \"produto2\"], \"total\": 123.45}"
+                text: "Leia este cupom e retorne JSON com items e total"
               },
               {
                 type: "input_image",
@@ -38,9 +38,10 @@ export async function POST(request) {
 
     const data = await response.json()
 
+    console.log("OPENAI RESPONSE 👉", JSON.stringify(data))
+
     let text = data.output?.[0]?.content?.[0]?.text || '{}'
 
-    // 🔥 LIMPA resposta (muito importante)
     text = text.replace(/```json/g, '').replace(/```/g, '').trim()
 
     let parsed
@@ -54,7 +55,7 @@ export async function POST(request) {
     return Response.json(parsed)
 
   } catch (error) {
-    console.error(error)
+    console.error("ERRO NA API 👉", error)
     return Response.json({ items: [], total: 0 })
   }
 }
